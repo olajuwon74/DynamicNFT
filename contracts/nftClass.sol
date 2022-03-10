@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 contract DynamicNFT is ERC721URIStorage {
 
     uint tokenCounter;
+    event information(uint newItemId);
 
     constructor() ERC721("Dynamicnft", "DYM") {
         // mint an NFT to yourself
@@ -19,6 +20,8 @@ contract DynamicNFT is ERC721URIStorage {
         _mint(msg.sender, newItemId);
         _setTokenURI(newItemId, tokenURI);
         tokenCounter += 1;
+        emit information(newItemId);
         return newItemId;
+        
     }
 }
