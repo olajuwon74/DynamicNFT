@@ -14,8 +14,6 @@ contract DynamicNFT is ERC721URIStorage {
         _mint(msg.sender, tokenCounter);
         ++tokenCounter;
     }
-
-
     function createToken(string memory tokenURI) public returns(uint256){
         uint256 newItemId = tokenCounter;
         _mint(msg.sender, newItemId);
@@ -23,5 +21,4 @@ contract DynamicNFT is ERC721URIStorage {
         tokenCounter += 1;
         return newItemId;
     }
-
 }
