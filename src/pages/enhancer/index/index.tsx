@@ -128,7 +128,7 @@ export default(props) => {
 
   const [form] = Form.useForm();
   const { done, visible, current, onDone, onCancel, onSubmit } = props;
-  const [type, setType] = useState<string>();
+  const [type, setType] = useState<string>("image");
   const [id, setId] = useState<string>();
   const [loading, setLoading] = useState<boolean>(false);
   const [imageUrlOriginal, setImageUrlOriginal] = useState<string>();
@@ -204,9 +204,17 @@ export default(props) => {
   }, [props.current]);
 
   const handleChange = async (info, setTargetImage) => {
-    if (!form.getFieldsValue('style').style) {
-        message.info('please select style...');
-        return;
+    if (info.fileList[info.fileList.length - 1].type.indexOf('image') > -1) {
+      setType('image');
+
+      /*if (!form.getFieldsValue('style').style) {
+          message.info('please select style...');
+          return;
+      }*/
+    } else if (info.fileList[info.fileList.length - 1].type.indexOf('video') > -1) {
+      setType('video');
+    } else {
+      setType('image');
     }
 
     setRepairId('');
@@ -226,7 +234,7 @@ export default(props) => {
       setType('video');
       setPreviewVideo(info.fileList[info.fileList.length - 1].url || info.fileList[info.fileList.length - 1].preview);
     } else {
-      setType('');
+      setType('image');
     }
 
     if (info.file.status === 'uploading') {
@@ -257,15 +265,15 @@ export default(props) => {
   };
 
   const handleUpload = () => {
-    const hide = message.loading('create task...', 180);
+    const hide = message.loading('In the processing...', 180);
     const { fileList } = state;
     const formData = new FormData();
     const repairType = "cartoon";//form.getFieldsValue('repairType').repairType;
 
-    if (!form.getFieldsValue('style').style) {
+    /*if (!form.getFieldsValue('style').style) {
         message.info('please select style...');
         return;
-    }
+    }*/
 
     formData.append('type', repairType);
     formData.append('style', form.getFieldsValue('style').style);
@@ -282,22 +290,88 @@ export default(props) => {
         console.log(res.data);
 
         if (res.data && res.data.repairId) {
-          hide();
-          message.success('create task success...');
+          message.success('upload success...');
           setRepairId(res.data.repairId);
           setSessionId(res.data.sessionId);
+          const { fileList } = state;
+          formData.append('type', repairType);
+          formData.append('sessionId', res.data.sessionId);
+
+          if (form.getFieldsValue('style').style.indexOf('NFT_houtu') > -1) {
+            formData.set('style', form.getFieldsValue('style').style + '_' + Math.floor((Math.random()*48)));
+            console.log('current random style:' + formData.get('style'));
+          } else if (form.getFieldsValue('style').style.indexOf('NFT_CG4') > -1) {
+            formData.set('style', form.getFieldsValue('style').style + '_' + Math.floor((Math.random()*499)));
+            console.log('current random style:' + formData.get('style'));
+          } else if (form.getFieldsValue('style').style.indexOf('NFT_shouhui') > -1) {
+            formData.set('style', form.getFieldsValue('style').style + '_' + Math.floor((Math.random()*35)));
+            console.log('current random style:' + formData.get('style'));
+          }
+
+          /*fileList.forEach(file => {
+                formData.append('multipartFile', file);
+          });*/
+
+          //formData.append('file', fileList[fileList.length - 1]);
+
+          state.uploading = true;
+          repairSession(repairType, formData).then(res=>{
+            hide();
+            setTimeout( function(){
+              console.log(res.data);
+
+              if (res.data && res.data.sessionId) {
+                hide();
+                message.success('random success...');
+                this.timer = setInterval(() => {
+                  getQueueNotify(res.data.sessionId).then(response=>{
+                    console.log(response.data);
+
+                    if (response.data && response.data[response.data.length - 1].process) {
+                      if (response.data[response.data.length - 1].process == -1) {
+                        message.info('process:' + response.data[response.data.length - 1].process + ', reason:' + response.data[response.data.length - 1].processStr);
+                        clearInterval(this.timer);
+                        return;
+                      } else {
+                        message.info('process:' + (response.data[response.data.length - 1].process ? response.data[response.data.length - 1].process : 0) + '%, waiting time:' + (response.data[response.data.length - 1].waitTime ? response.data[response.data.length - 1].waitTime : 0) + 'seconds...');
+
+                        if (response.data[response.data.length - 1].process == 100) {
+                            clearInterval(this.timer);
+
+                            if (response.data[response.data.length - 1].headUrlList) {
+                              for (var index = 0; index < response.data[response.data.length - 1].headUrlList.length; index++) {
+                                  var destUrl = response.data[response.data.length - 1].headUrlList[index];
+
+                                  if (destUrl.indexOf('local_0_split_out.jpg') > -1) {
+                                      setPreviewImage(destUrl);
+                                      return;
+                                  }
+                              }
+                            }
+                        }
+                      }
+                    } else {
+                        message.info('process:0%, reason:In processing, please wait.');
+                    }
+                  })
+                }, 3000);
+              }
+            }, 1000 );//延迟1000毫米
+          })
         }
       }, 1000 );//延迟1000毫米
     })
   };
 
   const handleVideoUpload = () => {
-    const hide = message.loading('create task...', 180);
+    const hide = message.loading('In the processing...', 180);
     const { fileList } = state;
     const formData = new FormData();
     const repairType = "cartoon_video";
+    const dataType = "mp4";
 
     formData.append('type', repairType);
+    formData.append('dataType', dataType);
     formData.append('file', fileList[fileList.length - 1]);
 
     state.uploading = true;
@@ -305,22 +379,62 @@ export default(props) => {
       setTimeout( function(){
         console.log(res.data);
 
-        if (res.data && res.data.repairId) {
+        if (res.data && res.data.repairId && res.data.sessionId) {
           hide();
-          message.success('create task success...');
+          message.success('upload success...');
           setRepairId(res.data.repairId);
           setSessionId(res.data.sessionId);
-        }
+
+          formData.append('type', repairType);
+          formData.append('sessionId', res.data.sessionId);
+
+          repairSession(repairType, formData).then(res=>{
+            setTimeout( function(){
+              console.log(res.data);
+
+              if (res.data && res.data.sessionId) {
+                hide();
+                message.success('Processing is complete...');
+                this.timer = setInterval(() => {
+                  getQueueNotify(res.data.sessionId).then(response=>{
+                    console.log(response.data);
+
+                    if (response.data && response.data[response.data.length - 1].process) {
+                      if (response.data[response.data.length - 1].process == -1) {
+                        message.info('process:' + response.data[response.data.length - 1].process + ', reason:' + response.data[response.data.length - 1].processStr);
+                        clearInterval(this.timer);
+                        return;
+                      } else {
+                        message.info('process:' + (response.data[response.data.length - 1].process ? response.data[response.data.length - 1].process : 0) + '%, waiting time:' + (response.data[response.data.length - 1].waitTime ? response.data[response.data.length - 1].waitTime : 0) + 'seconds...');
+
+                        if (response.data[response.data.length - 1].process == 100) {
+                          clearInterval(this.timer);
+
+                          if (response.data[response.data.length - 1]) {
+                            var videoUrl = response.data[response.data.length - 1].videoUrl;
+                            setPreviewVideo(videoUrl);
+                          }
+                        }
+                      }
+                    } else {
+                        message.info('process:0%, reason:In processing, please wait.');
+                    }
+                  })
+                }, 3000);
+              }
+            }, 1000 );//延迟1000毫米
+          })
+         }
       }, 1000 );//延迟1000毫米
     })
   };
 
   const handleRepairSession = () => {
       console.log('current select style:' + form.getFieldsValue('style').style);
-      if (!form.getFieldsValue('style').style) {
+      /*if (!form.getFieldsValue('style').style) {
           message.info('please select style...');
           return;
-      }
+      }*/
 
       if (!sessionId) {
           message.info('please wait upload Photo/Video...');
@@ -381,12 +495,14 @@ export default(props) => {
 
                               if (destUrl.indexOf('local_0_split_out.jpg') > -1) {
                                   setPreviewImage(destUrl);
-                                  break;
+                                  return;
                               }
                           }
                         }
                     }
                   }
+                } else {
+                    message.info('process:0%, reason:In processing, please wait.');
                 }
               })
             }, 3000);
@@ -446,7 +562,7 @@ export default(props) => {
             </ProCard>
           </ProCard>
 
-          <ProCard title="Choose Style" style={{"overflow":"auto"}}>
+          {(type == 'image') && <ProCard title="Choose Style" style={{"overflow":"auto"}}>
             <div style={{height:570}}>
                 <Form.Item
                   name="style"
@@ -464,7 +580,7 @@ export default(props) => {
                 </Form.Item>
                 <Button icon={<HeartTwoTone twoToneColor="#eb2f96" />} onClick={handleRepairSession}>Random</Button>
             </div>
-          </ProCard>
+          </ProCard>}
         </ProCard>
       </ProCard>
     </RcResizeObserver>
