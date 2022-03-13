@@ -6,7 +6,7 @@ async function main() {
 A ContractFactory in ethers.js is an abstraction used to deploy new smart contracts,
 so nftContract here is a factory for instances of our GameItem contract.
 */
-  const nftContract = await ethers.getContractAt("DynamicNFT", "0x751E0640396B6bd28C202FA1681E956e75410570");
+  const nftContract = await ethers.getContractAt("DynamicNFT", "0xF9C90fAdEBe19117a000588E3ff5D6A8AAF00f57");
   const txn = await nftContract.createToken("ipfs://QmcNdbbkzeVQBj9MyTonG5u2Nok9DhR2LorAXSXqCFK8qJ");
   console.log("token created");
 }
